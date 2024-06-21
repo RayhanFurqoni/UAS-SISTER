@@ -1,4 +1,4 @@
-# UAS
+![image](https://github.com/RayhanFurqoni/UAS-SISTER/assets/124054176/5166b601-7de1-4ed2-b369-ccdc22cf677b)# UAS
 1203210027	Tifanni Diva Auliya
 1203210139	Rayhan Furqoni
 - Buat kontainer LXC berikut
@@ -38,7 +38,9 @@
 
 - Tambahkan domain masing-masing lxc di `sudo nano /etc/hosts` seperti gambar di bawah ini.
 
-  ![image](https://github.com/RayhanFurqoni/UAS-SISTER/assets/124054176/fe847e25-34de-4197-af7e-d6679c43bdf9)
+![image](https://github.com/RayhanFurqoni/UAS-SISTER/assets/124054176/e40eefce-d704-4d19-8f73-fd36245dba7e)
+
+
 
 
 
