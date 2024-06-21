@@ -692,3 +692,377 @@
           become_method: su
           action: service name=nginx state=restarted
         ```
+        
+ - buat direktori codeigniter `sudo mkdir ci` untuk mengakomodasi script yang memungkinkan untuk menginstal framewrok codeigniter.  
+
+    - membuat 3 folder untuk instalasi codeigniter
+
+      ```
+      sudo mkdir -p ci/tasks
+      sudo mkdir -p ci/handlers
+      sudo mkdir -p ci/templates
+      ```
+
+    - Di direktori tasks, buat file main.yml. Lalu ketikan scriptnya seperti di bawah ini.
+
+      ```
+      ---
+      - name: delete apt chache
+        become: yes
+        become_user: root
+        become_method: su
+        command: rm -vf /var/lib/apt/lists/*
+      
+      - name: install requirement dpkg to install php5
+        become: yes
+        become_user: root
+        become_method: su
+        apt: name={{ item }} state=latest update_cache=true
+        with_items:
+          - ca-certificates
+          - apt-transport-https
+          - wget
+          - curl
+          - python-apt
+          - software-properties-common
+          - git
+      
+      - name: Add key
+        apt_key:
+          url: https://packages.sury.org/php/apt.gpg
+          state: present
+      
+      - name: Add Php Repository
+        apt_repository:
+            repo: "deb https://packages.sury.org/php/ stretch main"
+            state: present
+            filename: php.list
+            update_cache: true
+      
+      - name: wget repository
+        shell: wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg
+      
+      - name: add repository
+        shell: echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" | tee /etc/apt/sources.list.d/php.list
+      
+      - name: apt update
+        shell: apt update
+      
+      - name: install nginx php5
+        become: yes
+        become_user: root
+        become_method: su
+        apt: name={{ item }} state=latest update_cache=true
+        with_items:
+          - nginx
+          - nginx-extras
+          - php5.6
+          - php5.6-fpm
+          - php5.6-common
+          - php5.6-cli
+          - php5.6-curl
+          - php5.6-mbstring
+          - php5.6-mysqlnd
+          - php5.6-xml
+      
+      - name: Git clone repo sas-ci
+        become: yes
+        git:
+          repo: '{{ git_url }}'
+          dest: "{{ destdir }}"
+      
+      - name: Copy app.conf
+        template:
+          src=templates/app.conf
+          dest=/etc/nginx/sites-available/{{ domain }}
+        vars:
+          servername: '{{ domain }}'
+      
+      - name: Delete another nginx config
+        become: yes
+        become_user: root
+        become_method: su
+        command: rm -f /etc/nginx/sites-enabled/*
+      
+      - name: Symlink app.conf
+        command: ln -sfn /etc/nginx/sites-available/{{ domain }} /etc/nginx/sites-enabled/{{ domain }}
+        notify:
+          - restart nginx
+      
+      - name: Write {{ domain }} to /etc/hosts
+        lineinfile:
+          dest: /etc/hosts
+          regexp: '.*{{ domain }}$'
+          line: "127.0.0.1 {{ domain }}"
+          state: present
+      ```
+
+    - Di direktori handlers, buat file main.yml. Lalu ketikan scriptnya seperti di bawah ini.
+
+      ```
+      ---
+      - name: restart nginx
+        become: yes
+        become_user: root
+        become_method: su
+        action: service name=nginx state=restarted
+      
+      - name: restart php
+        become: yes
+        become_user: root
+        become_method: su
+        action: service name=php5.6-fpm state=restarted
+      ```
+
+    - Di direktori templates, buat file app.conf . Lalu ketikan scriptnya seperti di bawah ini.
+
+      ```
+      server {
+        listen 80;
+        server_name {{ domain }};
+        root {{ destdir }};
+        index index.php;
+        location / {
+           try_files $uri $uri/ /index.php?$query_string;
+        }
+        location ~ \.php$ {
+           fastcgi_pass unix:/run/php/php5.6-fpm.sock;  #Sesuaikan dengan versi PHP
+           fastcgi_index index.php;
+           fastcgi_param SCRIPT_FILENAME {{ destdir }}$fastcgi_script_name;
+           include fastcgi_params;
+        }
+      }
+      ```
+
+  - buat direktori db `sudo mkdir db` untuk mengakomodasi script yang memungkinkan untuk menginstal db framework.  
+    - Pada direktori db, kita akan membuat 3 file script seperti di bawah ini.
+
+
+      ```
+      sudo mkdir -p db/tasks
+      sudo mkdir -p db/handlers
+      sudo mkdir -p db/templates
+      ```
+
+    - Di direktori tasks, buat file main.yml. Lalu ketikan scriptnya seperti di bawah ini.
+
+      ```
+      ---
+      - name: delete apt chache
+        become: yes
+        become_user: root
+        become_method: su
+        command: rm -vf /var/lib/apt/lists/*
+      
+      - name: Download and install Composer
+        shell: curl -sS https://getcomposer.org/installer | php
+        args:
+          chdir: /usr/src/
+          creates: /usr/local/bin/composer
+          warn: false
+        become: yes
+      
+      - name: Add Composer to global path
+        copy:
+          dest: /usr/local/bin/composer
+          group: root
+          mode: '0755'
+          owner: root
+          src: /usr/src/composer.phar
+          remote_src: yes
+        become: yes
+      
+      - name: Ansible delete file create-project
+        file:
+          path: /var/www/html/laravel
+          state: absent
+      
+      - name: composer create-project
+        shell: /usr/local/bin/composer create-project laravel/laravel /var/www/html/laravel --prefer-dist --no-interaction
+      
+      - name: Copy .env.template
+        template:
+          src=templates/env.template
+          dest=/var/www/html/laravel/.env
+      
+      - name: composer
+        shell: cd /var/www/html/laravel; /usr/local/bin/composer install  --no-interaction
+      
+      - name: key
+        shell: /usr/bin/php7.4 /var/www/html/laravel/artisan key:generate
+      
+      - name: chmod
+        become: yes
+        become_user: root
+        become_method: su
+        command: chmod 777 -R /var/www/html/laravel/storage
+      
+      - name: Copy lv.conf
+        template:
+          src=templates/lv.conf
+          dest=/etc/nginx/sites-available/{{ domain }}
+        vars:
+          servername: '{{ domain }}'
+      
+      - name: copy php7.conf
+        template:
+          src=templates/php7.conf
+          dest=/etc/php/7.4/fpm/pool.d/www.conf
+      
+      - name: Symlink lv.conf
+        command: ln -sfn /etc/nginx/sites-available/{{ domain }} /etc/nginx/sites-enabled/{{ domain }}
+        notify:
+          - restart nginx
+      
+      - name: Write {{ domain }} to /etc/hosts
+        lineinfile:
+          dest: /etc/hosts
+          regexp: '.*{{ domain }}$'
+          line: "127.0.0.1 {{ domain }}"
+          state: present
+      ```
+
+    - Di direktori handlers, buat file main.yml. Lalu ketikan scriptnya seperti di bawah ini.
+
+      ```
+      ---
+      - name: restart mysql
+        become: yes
+        become_user: root
+        become_method: su
+        action: service name=mysql state=restarted
+      ```
+
+    - Di direktori templates, buat beberapa file bernama my.cnf. Lalu ketikan scriptnya seperti di bawah ini.
+
+      ```
+      #
+      # These groups are read by MariaDB server.
+      # Use it for options that only the server (but not clients) should see
+      #
+      # See the examples of server my.cnf files in /usr/share/mysql/
+      #
+      
+      # this is read by the standalone daemon and embedded servers
+      [server]
+      
+      # this is only for the mysqld standalone daemon
+      [mysqld]
+      
+      #
+      # * Basic Settings
+      #
+      user            = mysql
+      pid-file        = /var/run/mysqld/mysqld.pid
+      socket          = /var/run/mysqld/mysqld.sock
+      port            = 3306
+      basedir         = /usr
+      datadir         = /var/lib/mysql
+      tmpdir          = /tmp
+      lc-messages-dir = /usr/share/mysql
+      skip-external-locking
+      
+      # Instead of skip-networking the default is now to listen only on
+      # localhost which is more compatible and is not less secure.
+      bind-address            = 0.0.0.0
+      
+      #
+      # * Fine Tuning
+      #
+      key_buffer_size         = 16M
+      max_allowed_packet      = 16M
+      thread_stack            = 192K
+      thread_cache_size       = 8
+      # This replaces the startup script and checks MyISAM tables if needed
+      # the first time they are touched
+      myisam_recover_options  = BACKUP
+      #max_connections        = 100
+      #table_cache            = 64
+      #thread_concurrency     = 10
+      
+      #
+      # * Query Cache Configuration
+      #
+      query_cache_limit       = 1M
+      query_cache_size        = 16M
+      
+      #
+      # * Logging and Replication
+      #
+      # Both location gets rotated by the cronjob.
+      # Be aware that this log type is a performance killer.
+      # As of 5.1 you can enable the log at runtime!
+      #general_log_file        = /var/log/mysql/mysql.log
+      #general_log             = 1
+      #
+      # Error log - should be very few entries.
+      #
+      log_error = /var/log/mysql/error.log
+      #
+      # Enable the slow query log to see queries with especially long duration
+      #slow_query_log_file    = /var/log/mysql/mariadb-slow.log
+      #long_query_time = 10
+      #log_slow_rate_limit    = 1000
+      #log_slow_verbosity     = query_plan
+      #log-queries-not-using-indexes
+      #
+      # The following can be used as easy to replay backup logs or for replication.
+      # note: if you are setting up a replication slave, see README.Debian about
+      #       other settings you may need to change.
+      #server-id              = 1
+      #log_bin                        = /var/log/mysql/mysql-bin.log
+      expire_logs_days        = 10
+      max_binlog_size   = 100M
+      #binlog_do_db           = include_database_name
+      #binlog_ignore_db       = exclude_database_name
+      
+      #
+      # * InnoDB
+      #
+      # InnoDB is enabled by default with a 10MB datafile in /var/lib/mysql/.
+      # Read the manual for more InnoDB related options. There are many!
+      
+      #
+      # * Security Features
+      #
+      # Read the manual, too, if you want chroot!
+      # chroot = /var/lib/mysql/
+      #
+      # For generating SSL certificates you can use for example the GUI tool "tinyca".
+      #
+      # ssl-ca=/etc/mysql/cacert.pem
+      # ssl-cert=/etc/mysql/server-cert.pem
+      # ssl-key=/etc/mysql/server-key.pem
+      #
+      # Accept only connections using the latest and most secure TLS protocol version.
+      # ..when MariaDB is compiled with OpenSSL:
+      # ssl-cipher=TLSv1.2
+      # ..when MariaDB is compiled with YaSSL (default in Debian):
+      # ssl=on
+      
+      #
+      # * Character sets
+      #
+      # MySQL/MariaDB default is Latin1, but in Debian we rather default to the full
+      # utf8 4-byte character set. See also client.cnf
+      #
+      character-set-server  = utf8mb4
+      collation-server      = utf8mb4_general_ci
+      
+      #
+      # * Unix socket authentication plugin is built-in since 10.0.22-6
+      #
+      # Needed so the root database user can authenticate without a password but
+      # only when running as the unix root user.
+      #
+      # Also available for other users if required.
+      # See https://mariadb.com/kb/en/unix_socket-authentication-plugin/
+      
+      # this is only for embedded server
+      [embedded]
+      
+      # This group is only read by MariaDB servers, not by MySQL.
+      # If you use the same .cnf file for MySQL and MariaDB,
+      # you can put MariaDB-only options here
+      [mariadb]
+      ```
