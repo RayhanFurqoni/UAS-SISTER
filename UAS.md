@@ -2019,3 +2019,202 @@
           }
       }
       ```
+      - Setelah itu, kita membuat file untuk menjalankan konfigurasi yang telah kita buat di direktori roles.
+
+  - Buat file bernama hosts `nano hosts` dan ketik script seperti di bawah ini.
+![image](https://github.com/RayhanFurqoni/UAS-SISTER/assets/124054176/1285325d-aa98-4c7e-ac87-8bc3c5c5d008)
+
+    ```
+    [laravel]
+    lxc_php7_1 ansible_host=lxc_php7_1.dev ansible_ssh_user=root ansible_become_pass=smamsatu
+    lxc_php7_2 ansible_host=lxc_php7_2.dev ansible_ssh_user=root ansible_become_pass=smamsatu
+    lxc_php7_4 ansible_host=lxc_php7_4.dev ansible_ssh_user=root ansible_become_pass=smamsatu
+    lxc_php7_6 ansible_host=lxc_php7_6.dev ansible_ssh_user=root ansible_become_pass=smamsatu
+    
+    [codeigniter]
+    lxc_php5_1 ansible_host=lxc_php5_1.dev ansible_ssh_user=root ansible_become_pass=smamsatu
+    lxc_php5_2 ansible_host=lxc_php5_2.dev ansible_ssh_user=root ansible_become_pass=smamsatu
+    
+    [wordpress]
+    lxc_php7_2 ansible_host=lxc_php7_2.dev ansible_ssh_user=root ansible_become_pass=smamsatu
+    lxc_php7_3 ansible_host=lxc_php7_3.dev ansible_ssh_user=root ansible_become_pass=smamsatu
+    lxc_php7_4 ansible_host=lxc_php7_4.dev ansible_ssh_user=root ansible_become_pass=smamsatu
+    lxc_php7_5 ansible_host=lxc_php7_5.dev ansible_ssh_user=root ansible_become_pass=smamsatu
+    
+    [yii]
+    lxc_php7_1 ansible_host=lxc_php7_1.dev ansible_ssh_user=root ansible_become_pass=smamsatu
+    lxc_php7_2 ansible_host=lxc_php7_2.dev ansible_ssh_user=root ansible_become_pass=smamsatu
+    lxc_php7_4 ansible_host=lxc_php7_4.dev ansible_ssh_user=root ansible_become_pass=smamsatu
+    lxc_php7_5 ansible_host=lxc_php7_5.dev ansible_ssh_user=root ansible_become_pass=smamsatu
+    lxc_php7_6 ansible_host=lxc_php7_6.dev ansible_ssh_user=root ansible_become_pass=smamsatu
+    
+    [database]
+    lxc_mariadb ansible_host=lxc_mariadb.dev ansible_ssh_user=root ansible_become_pass=smamsatu
+    ```
+
+  - Buat file bernama install-ci.yml `nano install-ci.yml` dan ketik script seperti di bawah ini.
+![image](https://github.com/RayhanFurqoni/UAS-SISTER/assets/124054176/2a1a70ab-4f61-48f6-b44f-3a453759de57)
+
+    ```
+    ---
+    - hosts: lxc_php5_1
+      vars:
+        git_url: 'https://github.com/aldonesia/sas-ci'
+        destdir: '/var/www/html/ci'
+        domain: 'lxc_php5_1.dev'
+      roles:
+        - codeigniter
+    
+    - hosts: lxc_php5_2
+      vars:
+        git_url: 'https://github.com/aldonesia/sas-ci'
+        destdir: '/var/www/html/ci'
+        domain: 'lxc_php5_2.dev'
+      roles:
+        - ci
+    ```
+
+  - Buat file bernama install-laravel.yml `nano install-laravel.yml` dan ketik script seperti di bawah ini.
+![image](https://github.com/RayhanFurqoni/UAS-SISTER/assets/124054176/a6081459-f82a-407d-9679-ca11a13f9ea2)
+
+    ```
+    ---
+    - hosts: lxc_php7_1
+      vars:
+        username: 'admin'
+        password: 'smamsatu'
+        domain: 'lxc_php7_1.dev'
+      roles:
+        - php
+        - laravel
+    
+    - hosts: lxc_php7_2
+      vars:
+        username: 'admin'
+        password: 'smamsatu'
+        domain: 'lxc_php7_2.dev'
+      roles:
+        - php
+        - laravel
+    
+    - hosts: lxc_php7_4
+      vars:
+        username: 'admin'
+        password: 'smamsatu'
+        domain: 'lxc_php7_4.dev'
+      roles:
+        - php
+        - laravel
+    
+    - hosts: lxc_php7_6
+      vars:
+        username: 'admin'
+        password: 'smamsatu'
+        domain: 'lxc_php7_6.dev'
+      roles:
+        - php
+        - laravel
+    ```
+
+  - Buat file bernama install-mariadb.yml `nano install-mariadb.yml` dan ketik script seperti di bawah ini.
+![image](https://github.com/RayhanFurqoni/UAS-SISTER/assets/124054176/2ed450eb-d409-4dc7-a233-4d77c17fe365)
+
+    ```
+    - hosts: database
+      vars:
+        username: 'admin'
+        password: 'smamsatu'
+        domain: 'lxc_mariadb.dev'
+      roles:
+        - db
+        - pma
+    ```
+
+  - Buat file bernama install-wordpress.yml `nano install-wordpress.yml` dan ketik script seperti di bawah ini.
+![image](https://github.com/RayhanFurqoni/UAS-SISTER/assets/124054176/0c3ac51d-2b4b-4075-abe6-ef2e8cdc82ae)
+
+    ```
+    ---
+    - hosts: lxc_php7_2
+      vars:
+        username: 'admin'
+        password: 'smamsatu'
+        domain: 'lxc_php7_2.dev'
+      roles:
+        - wordpress
+    
+    - hosts: lxc_php7_3
+      vars:
+        username: 'admin'
+        password: 'smamsatu'
+        domain: 'lxc_php7_3.dev'
+      roles:
+        - wordpress
+    
+    - hosts: lxc_php7_4
+      vars:
+        username: 'admin'
+        password: 'smamsatu'
+        domain: 'lxc_php7_4.dev'
+      roles:
+        - wordpress
+    
+    - hosts: lxc_php7_5
+      vars:
+        username: 'admin'
+        password: 'smamsatu'
+        domain: 'lxc_php7_5.dev'
+      roles:
+        - wordpress
+    ```
+
+  - Buat file bernama install-yii.yml `nano install-yii.yml` dan ketik script seperti di bawah ini.
+![image](https://github.com/RayhanFurqoni/UAS-SISTER/assets/124054176/8edac237-f740-447d-96ae-b7a2c13dcef4)
+
+    ```
+    ---
+    - hosts: lxc_php7_1
+      vars:
+        username: 'admin'
+        password: 'smamsatu'
+        domain: 'lxc_php7_1.dev'
+      roles:
+        - php
+        - yii
+    
+    - hosts: lxc_php7_2
+      vars:
+        username: 'admin'
+        password: 'smamsatu'
+        domain: 'lxc_php7_2.dev'
+      roles:
+        - php
+        - yii
+    
+    - hosts: lxc_php7_4
+      vars:
+        username: 'admin'
+        password: 'smamsatu'
+        domain: 'lxc_php7_4.dev'
+      roles:
+        - php
+        - yii
+    
+    - hosts: lxc_php7_5
+      vars:
+        username: 'admin'
+        password: 'smamsatu'
+        domain: 'lxc_php7_5.dev'
+      roles:
+        - php
+        - yii
+    
+    - hosts: lxc_php7_6
+      vars:
+        username: 'admin'
+        password: 'smamsatu'
+        domain: 'lxc_php7_6.dev'
+      roles:
+        - php
+        - yii
+    ```
